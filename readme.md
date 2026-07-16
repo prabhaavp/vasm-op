@@ -11,7 +11,7 @@ Vision-ASM aims to provide a community-built visual blind-spot monitoring system
 Use cases:
 
 * **Vehicles without BSM:** Provides a vision-only "adjacent-spot" alert system.
-* **Vehicles with factory BSM:** Works alongside radar-based systems to provide additional visual awareness, including vehicles that may not trigger factory sensors.
+* **Vehicles with factory BSM:** Works alongside radar-based systems to provide additional visual awareness, including vehicles that may be too far ahead (adjacent to you) to trigger factory sensors.
 
 The current model has been trained on routes from a single vehicle and performs well, but requires diverse data from different vehicle interiors, cameras, and driving environments.
 
