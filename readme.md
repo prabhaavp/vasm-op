@@ -1,17 +1,23 @@
-# Vision-ASM Route Submission
+![](feature.png)
 
-Open-source **Vision-Adjacent Spot Monitoring (ASM)** model training tool for Comma routes.
+# The Trained Model and Annotation Feature Are Now Shipped in StarPilot Stable Release 6.7.3!
+
+Vision-Adjacent Spot Monitoring (Vision-ASM) is now officially available in **StarPilot Release 6.7.3** as part of [Pull Request #75](https://github.com/firestar5683/StarPilot/pull/75), and is included in both the **development and stable Master branches**. Since the initial release, additional bug fixes and enhancements have also been included through [Pull Request #76](https://github.com/firestar5683/StarPilot/pull/76) and [Pull Request #77](https://github.com/firestar5683/StarPilot/pull/77).
+
+Want to try it out? Install StarPilot using the [StarPilot installation guide](https://wiki.firestar.link/software/starpilot). Test out the new feature and share your feedback!
+
+Community-submitted data will help expand and improve the model across different vehicles, interiors, cameras, and driving environments. Keep reading below to do learn how to do so. 
+
+# What is Vision-ASM?
 
 Vision-ASM uses the driver-facing wide-angle camera to detect vehicles in adjacent lanes through the side windows, improving blind-spot awareness across different vehicles and environments.
 
-## What is Vision-ASM?
-
-Vision-ASM aims to provide a community-built visual blind-spot monitoring system.
+This is a community-data driven, vision-based blind-spot monitoring system. This repository provides a easy to use bulk utility for submitting training routes from both [Comma.ai Connect](https://connect.comma.ai/) and [Konik.ai Stable](https://stable.konik.ai/) for use in Vision-ASM model development.
 
 Use cases:
 
 * **Vehicles without BSM:** Provides a vision-only "adjacent-spot" alert system.
-* **Vehicles with factory BSM:** Works alongside radar-based systems to provide additional visual awareness, including vehicles that may be too far ahead (adjacent to you) to trigger factory sensors.
+* **Vehicles with factory BSM:** Works alongside radar-based systems to provide **additional visual awareness**, including vehicles that may be too far ahead (adjacent to you) to trigger factory sensors.
 
 The current model has been trained on routes from a single vehicle and performs well, but requires diverse data from different vehicle interiors, cameras, and driving environments.
 
@@ -24,7 +30,7 @@ The utility simplifies route submission by automatically handling route selectio
 Requires:
 
 * Google account (only for running Colab)
-* Comma JWT token
+* Comma or Konik JWT token
 * Dongle ID
 
 [Run Colab Utility](https://colab.research.google.com/drive/1YmdxznB9cSIzj-ngIbW-rpv2C-QbJtAW)
@@ -66,49 +72,45 @@ Data is used for semi-automated fine-tuning of open-source computer vision model
 
 If your vehicle has factory BSM, those signals will be used in an automated process to help label adjacent vehicles.
 
-## Demo
-
-### Vision-ASM Detection Preview
+## Vision-ASM Detection Preview
 
 ![Vision-ASM Demo 1](demo1.mp4)
 
 ![Vision-ASM Demo 2](demo2.mp4)
 
-### Settings Integration Preview
-
-![Vision-ASM Settings](feature.png)
-
 ## Training Pipeline
 
-1. **Extraction & Labeling**
+The Vision-ASM training pipeline utilizes a workflow to train both an object detector and an boolean based classifier. 
 
-   * Extracts driver camera frames using configurable windshield masks.
-   * Uses manual annotations and YOLO assistance for vehicle labels.
+### 1. Extraction & Labeling
 
-2. **Dataset Balancing**
+* **Windshield Masking:** Isolates the passenger (left) and driver (right) side window areas using custom bounding polygons mapped onto the wide-angle camera frame. The bounding boxes are cropped and masked out using `cv2.bitwise_and` to ignore car interior details, reducing potential false positives.
+* **Automated Labeling:** Frame intervals marked with active adjacent vehicles are downsampled to target frames. Positive frames pass through a helper network (`yolo26n`) to extract bounding-box annotations, while negative background frames are extracted at regular 30-frame intervals.
 
-   Balances conditions including:
+### 2. Dataset Balancing & Stratification
 
-   * Day / Night
-   * Highway / Local roads
-   * Different vehicles and interiors
-   * Various driving environments
+To ensure robust generalization across various driving scenarios, the pipeline enforces a stratified balancing protocol:
+* **Binning:** Negative frames are sorted into strata categories based on vehicle profile, calculated time-of-day (derived from the route start time and segment offset), and road types (Highway vs. In-roads).
+* **Parity Enforcement:** A round-robin drawing process limits negative samples to a 1.5x ratio relative to positive samples, preserving environmental diversity and preventing day/night bias.
 
-3. **Model Training**
+### 3. Model Training
 
-   Current experiments include:
+The pipeline trains models using a dual-track architecture to find the optimal deployment fit:
 
-   * **YOLOv8:** Vehicle detection (50 epochs)
-   * **MobileNetV3:** Car / No-Car classification (15 epochs)
+* **Track 1: YOLO26n (Object Detection - Shipped Model) and YOLO8n**
+  * **Epochs:** 70
+  * **Input Resolution:** Scaled to `[256, 352]` aspect ratio to fit the average crop dimensions.
+  * **Augmentation:** Mosaic augmentation is disabled (`mosaic=0.0`) to keep the physical perspective of the window crops intact. Standard horizontal flipping is enabled (`fliplr=0.5`).
+  * **Optimization:** Runs on FP16 Automatic Mixed Precision (AMP) to streamline computational resources.
+* **Track 2: MobileNetV3 Small (Pure Binary Classification)**
+  * **Epochs:** 15
+  * **Architecture:** Uses a frozen pre-trained backbone with a custom binary linear classification head.
+  * **Optimization:** Handled via the AdamW optimizer paired with a Cosine Annealing learning rate scheduler (starting at 0.001, weight decay 0.01).
 
-4. **Evaluation**
+### 4. Evaluation & Temporal Smoothing
 
-   Compares models to determine the best approach for reliable adjacent vehicle detection.
-
-## Development
-
-Feature development:
-https://github.com/prabhaavp/openpilot/
+* **Dual-Track Scorecard:** The pipeline evaluates and compares both architectures. It measures the binary classification accuracy of MobileNetV3 against the object detector's performance to establish relative parity.
+* **Temporal Smoothing:** To prevent flickering alerts under real-world driving conditions, inference utilizes an evaluation scoring buffer. Predictions must persist over a customizable time window (e.g., 0.2 seconds) before confirming the presence or absence of a vehicle in the adjacent spot.
 
 ## Credits
 
@@ -117,7 +119,7 @@ Inspired by:
 * StarPilot  
   https://github.com/firestar5683/StarPilot
 
-* Vision Speed Limit Training Workflow  
+* Vision Speed Limit Training
   https://github.com/firestar5683/StarPilot/blob/Dom/docs/speed-limit-vision-training.md
 
 * JWT Authentication Concepts  
