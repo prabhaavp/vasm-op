@@ -1,4 +1,19 @@
-![](feature.png)
+<div align="center">
+
+<img src="feature.png" width="100%">
+
+<table>
+<tr>
+<td width="50%">
+<img src="demo1.gif" width="100%">
+</td>
+<td width="50%">
+<img src="demo2.gif" width="100%">
+</td>
+</tr>
+</table>
+
+</div>
 
 # The Trained Model and Annotation Feature Are Now Shipped in StarPilot Stable Release 6.7.3!
 
@@ -12,7 +27,7 @@ Community-submitted data will help expand and improve the model across different
 
 Vision-ASM uses the driver-facing wide-angle camera to detect vehicles in adjacent lanes through the side windows, improving blind-spot awareness across different vehicles and environments.
 
-This is a community-data driven, vision-based blind-spot monitoring system. This repository provides a easy to use bulk utility for submitting training routes from both [Comma.ai Connect](https://connect.comma.ai/) and [Konik.ai Stable](https://stable.konik.ai/) for use in Vision-ASM model development.
+This is a community-data driven, vision-based blind-spot monitoring system. This repository provides a easy to use bulk utility for submitting training routes from both [Comma.ai Connect](https://connect.comma.ai/) and [Konik.ai Stable](https://stable.konik.ai/) for use in Vision-ASM model development and information about model development / feature.
 
 Use cases:
 
@@ -72,13 +87,7 @@ Data is used for semi-automated fine-tuning of open-source computer vision model
 
 If your vehicle has factory BSM, those signals will be used in an automated process to help label adjacent vehicles.
 
-## Vision-ASM Detection Preview
-
-![Vision-ASM Demo 1](demo1.mp4)
-
-![Vision-ASM Demo 2](demo2.mp4)
-
-## Training Pipeline
+## Model Training Pipeline
 
 The Vision-ASM training pipeline utilizes a workflow to train both an object detector and an boolean based classifier. 
 
