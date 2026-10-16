@@ -1,64 +1,139 @@
-﻿# Run or fine-tune the model
+<div align="center">
 
-This GUI-free handoff contains the v12 training workflow from `dm-bsm` and its dataset preparation script. The source folder has no Git history; v12 is the newest training file by available date and code content.
+<img src="feature.png" width="100%">
 
-## 1. Install dependencies
+<table>
+<tr>
+<td width="50%">
+<img src="demo1.gif" width="100%">
+</td>
+<td width="50%">
+<img src="demo2.gif" width="100%">
+</td>
+</tr>
+</table>
 
-Use Python 3.10+ and install PyTorch for your hardware, then:
+</div>
 
-```powershell
-python -m pip install ultralytics numpy tqdm opencv-python onnx onnxruntime
-```
+> For dataset preparation and training instructions, see [SELF_TRAIN.md](SELF_TRAIN.md).
 
-The scripts use `torch` through PyTorch. The base classifier is `yolo26n-cls.pt`; place it in the project folder or allow Ultralytics to download it.
+# The Trained Model and Annotation Feature Are Now Shipped in StarPilot Stable Release 6.7.3!
 
-## 2. Prepare data
+Vision-Adjacent Spot Monitoring (Vision-ASM) is now officially available in **StarPilot Release 6.7.3** as part of [Pull Request #75](https://github.com/firestar5683/StarPilot/pull/75), and is included in both the **development and stable Master branches**. Since the initial release, additional bug fixes and enhancements have also been included through [Pull Request #76](https://github.com/firestar5683/StarPilot/pull/76) and [Pull Request #77](https://github.com/firestar5683/StarPilot/pull/77).
 
-For automatic video-to-crop extraction, provide annotated routes and paired masks using this layout:
+Want to try it out? Install StarPilot using the [StarPilot installation guide](https://wiki.firestar.link/software/starpilot). Test out the new feature and share your feedback!
 
-```text
-videos/<vehicle>/<route>/annotations.json
-videos/<vehicle>/<route>/<segment>_dcamera.mp4   # or .hevc
-mask_repo/<vehicle>.json
-mask_repofront/<vehicle>.json
-```
+Community-submitted data will help expand and improve the model across different vehicles, interiors, cameras, and driving environments. Keep reading below to do learn how to do so. 
 
-Each mask JSON needs `poly_left` and `poly_right`. Each completed route annotation needs segment `left` / `right` event intervals with `start` and `end` seconds. Then run:
+# What is Vision-ASM?
 
-```powershell
-python prepare_dataset.py
-```
+Vision-ASM uses the driver-facing wide-angle camera to detect vehicles in adjacent lanes through the side windows, improving blind-spot awareness across different vehicles and environments.
 
-This writes `dataset_cls_v2/manifest.json` and paired images in `raw_front/` and `raw_full/`. If you already have prepared crops, skip extraction and place them in that layout. The manifest must include `id`, `car_name`, `route_id`, `seg_idx`, and `initial_label` (`0_nocar` or `1_car`).
+This is a community-data driven, vision-based blind-spot monitoring system. This repository provides a easy to use bulk utility for submitting training routes from both [Comma.ai Connect](https://connect.comma.ai/) and [Konik.ai Stable](https://stable.konik.ai/) for use in Vision-ASM model development and information about model development / feature.
 
-## 3. Train from the base model
+Use cases:
 
-From the directory containing the scripts and `dataset_cls_v2`, run:
+* **Vehicles without BSM:** Provides a vision-only "adjacent-spot" alert system.
+* **Vehicles with factory BSM:** Works alongside radar-based systems to provide **additional visual awareness**, including vehicles that may be too far ahead (adjacent to you) to trigger factory sensors.
 
-```powershell
-python train_pipeline.py
-```
+The current model has been trained on routes from a single vehicle and performs well, but requires diverse data from different vehicle interiors, cameras, and driving environments.
 
-Outputs are saved under `runs_master_v12/`; final weights and ONNX are in `runs_master_v12/final_deliverables/`. The pipeline first trains front/full classifiers, mines `distant_or_rear` pseudo-labels from their score differences, trains the three-class model, then tunes temporal alarm settings.
+## Submit Data
 
-## Fine-tune or adapt
+### Google Colab Upload Utility (Recommended)
 
-Edit the constants at the top of `train_pipeline.py` before running:
+The utility simplifies route submission by automatically handling route selection, file verification, and upload requests.
 
-- `BASE_MODEL_NAME`: checkpoint to train from.
-- `DATA_ROOT`, `WORK_DIR`: dataset and output paths.
-- `TARGET_SIZE`, `BATCH_SIZE`, `NUM_WORKERS`: image and hardware settings.
-- `TRAIN_STRIDE`: training frame subsampling.
+Requires:
 
-Change `epochs` and augmentation options in the `model.train(...)` call. To change pseudo-label behavior, edit the Stage 3 thresholds in `execute_pipeline()`. To tune alarm behavior, edit the threshold and smoothing grids in `run_vectorized_daemon_sweep()`.
+* Google account (only for running Colab)
+* Comma or Konik JWT token
+* Dongle ID
 
-For a clean retrain, remove the stage's saved run folder under `runs_master_v12/runs/` (otherwise an existing `best.pt` makes the stage skip). To rebuild pseudo-labels after changing Stage 3, also remove `runs_master_v12/tri_class_manifest.json`. Keep validation grouped by `(car_name, route_id, seg_idx)` so adjacent frames from one segment do not appear in both train and validation. Review mined labels and re-sweep temporal thresholds on your own validation routes.
+[Run Colab Utility](https://colab.research.google.com/drive/1YmdxznB9cSIzj-ngIbW-rpv2C-QbJtAW)
 
-## Why the pipeline is structured this way
+The utility:
 
-Video frames are highly correlated, so validation is split by route segment and training frames are subsampled. Separate front and full views let the system identify distant/rear examples from model disagreement, reducing manual labeling but introducing pseudo-label noise. Hard links are tried before copies to limit disk use, with copy fallback for filesystems that do not support links. Batch size and worker settings may need to be adjusted on other hardware. EMA smoothing with separate on/off thresholds reduces alarm chatter; its best values depend on deployment data.
-## Anonymized sample
+* Authenticates directly with Comma APIs using your JWT token.
+* Lets you select routes from your device.
+* Uploads only required training assets:
+  * Driver camera footage
+  * Log files
+* Sets route visibility for training ingestion.
+* Registers submitted routes for Vision-ASM dataset tracking.
 
-`examples/sample_vehicle/` contains an anonymized sample route, its segment video, `annotations.json`, paired masks, and illustrative manifest records. The original device and route IDs have been replaced with synthetic values. To run extraction on this sample, open a terminal in `examples/sample_vehicle` and run `python ..\..\prepare_dataset.py`; the script expects `videos/Example Vehicle/sample_route_7c91e4a2/13_dcamera.mp4` and `annotations.json` in that route folder, plus `mask_repo/Example Vehicle.json` and `mask_repofront/Example Vehicle.json`. This creates sample crops and replaces `dataset_cls_v2/manifest.json`, so back up the illustrative manifests first if you want to keep them.
+Your JWT token is never sent anywhere except Comma APIs. The tool runs entirely inside your own Google Colab session.
 
-The annotation labels the right side of segment 13 from 22.6 to 24.9 seconds. Mask vertices use the video pixel coordinates (1928 x 1208); the full and front masks intentionally differ. Relevant video segments and time intervals were identified with a semi-automated workflow and reviewed manually. For new data, a small hotkey-driven video viewer is an easy way to review frames: step through the clip, mark interval start and end points, and inspect the regions of interest. The sample polygons match this camera view. Create or adjust masks for your camera, then review the extracted frames and labels before training.
+### Manual Submission
+
+[Submit Routes](https://forms.gle/NCC1eQ38B62icg5a8)
+
+Useful routes:
+
+* Vehicles beside your car
+* Highway driving
+* Lane changes
+* Dense traffic
+* Different weather and lighting conditions
+
+Submitted data is used only for Vision-ASM development. The final model will be open-source.
+
+## Privacy & Data Handling
+
+Only the following information is shared:
+
+* Route (dcam + logs which contain BSM radar data)
+* Optional contact information provided during submission
+
+Data is used for semi-automated fine-tuning of open-source computer vision models.
+
+If your vehicle has factory BSM, those signals will be used in an automated process to help label adjacent vehicles.
+
+## Model Training Pipeline
+
+The Vision-ASM training pipeline utilizes a workflow to train both an object detector and an boolean based classifier. 
+
+### 1. Extraction & Labeling
+
+* **Windshield Masking:** Isolates the passenger (left) and driver (right) side window areas using custom bounding polygons mapped onto the wide-angle camera frame. The bounding boxes are cropped and masked out using `cv2.bitwise_and` to ignore car interior details, reducing potential false positives.
+* **Automated Labeling:** Frame intervals marked with active adjacent vehicles are downsampled to target frames. Positive frames pass through a helper network (`yolo26n`) to extract bounding-box annotations, while negative background frames are extracted at regular 30-frame intervals.
+
+### 2. Dataset Balancing & Stratification
+
+To ensure robust generalization across various driving scenarios, the pipeline enforces a stratified balancing protocol:
+* **Binning:** Negative frames are sorted into strata categories based on vehicle profile, calculated time-of-day (derived from the route start time and segment offset), and road types (Highway vs. In-roads).
+* **Parity Enforcement:** A round-robin drawing process limits negative samples to a 1.5x ratio relative to positive samples, preserving environmental diversity and preventing day/night bias.
+
+### 3. Model Training
+
+The pipeline trains models using a dual-track architecture to find the optimal deployment fit:
+
+* **Track 1: YOLO26n (Object Detection - Shipped Model) and YOLO8n**
+  * **Epochs:** 70
+  * **Input Resolution:** Scaled to `[256, 352]` aspect ratio to fit the average crop dimensions.
+  * **Augmentation:** Mosaic augmentation is disabled (`mosaic=0.0`) to keep the physical perspective of the window crops intact. Standard horizontal flipping is enabled (`fliplr=0.5`).
+  * **Optimization:** Runs on FP16 Automatic Mixed Precision (AMP) to streamline computational resources.
+* **Track 2: MobileNetV3 Small (Pure Binary Classification)**
+  * **Epochs:** 15
+  * **Architecture:** Uses a frozen pre-trained backbone with a custom binary linear classification head.
+  * **Optimization:** Handled via the AdamW optimizer paired with a Cosine Annealing learning rate scheduler (starting at 0.001, weight decay 0.01).
+
+### 4. Evaluation & Temporal Smoothing
+
+* **Dual-Track Scorecard:** The pipeline evaluates and compares both architectures. It measures the binary classification accuracy of MobileNetV3 against the object detector's performance to establish relative parity.
+* **Temporal Smoothing:** To prevent flickering alerts under real-world driving conditions, inference utilizes an evaluation scoring buffer. Predictions must persist over a customizable time window (e.g., 0.2 seconds) before confirming the presence or absence of a vehicle in the adjacent spot.
+
+## Credits
+
+Inspired by:
+
+* StarPilot  
+  https://github.com/firestar5683/StarPilot
+
+* Vision Speed Limit Training
+  https://github.com/firestar5683/StarPilot/blob/Dom/docs/speed-limit-vision-training.md
+
+* JWT Authentication Concepts  
+  https://github.com/nelsonjchen/op-dm-reading-tool
+
+Thank you to these projects for providing examples of community-driven open-source vision model development.
