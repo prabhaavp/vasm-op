@@ -1,0 +1,23 @@
+{
+  "route_id": "sample_route_7c91e4a2",
+  "segments": {
+    "13": {
+      "left": [],
+      "right": [
+        {
+          "start": 22.6,
+          "end": 24.9
+        }
+      ],
+      "starred": false,
+      "metadata": {
+        "time_of_day": "Day",
+        "road_type": "Highway",
+        "notes": ""
+      },
+      "road_type": "Highway"
+    }
+  },
+  "is_finished": true,
+  "route_start_time": "08:05"
+}

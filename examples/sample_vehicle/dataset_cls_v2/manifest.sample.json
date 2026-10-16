@@ -1,0 +1,22 @@
+[
+  {
+    "id": "r_sample_route_7c91e4a2_s_0_f00000_L",
+    "car_name": "Example Vehicle",
+    "route_id": "sample_route_7c91e4a2",
+    "seg_idx": "0",
+    "side": "left",
+    "initial_label": "0_nocar",
+    "path_front": "dataset_cls_v2/raw_front/r_sample_route_7c91e4a2_s_0_f00000_L.jpg",
+    "path_full": "dataset_cls_v2/raw_full/r_sample_route_7c91e4a2_s_0_f00000_L.jpg"
+  },
+  {
+    "id": "r_sample_route_7c91e4a2_s_13_f00452_R",
+    "car_name": "Example Vehicle",
+    "route_id": "sample_route_7c91e4a2",
+    "seg_idx": "13",
+    "side": "right",
+    "initial_label": "1_car",
+    "path_front": "dataset_cls_v2/raw_front/r_sample_route_7c91e4a2_s_13_f00452_R.jpg",
+    "path_full": "dataset_cls_v2/raw_full/r_sample_route_7c91e4a2_s_13_f00452_R.jpg"
+  }
+]
